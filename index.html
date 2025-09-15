@@ -12,29 +12,26 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc; /* slate-50 */
+            color: #334155; /* slate-700 */
         }
-        .task-card {
-            transition: all 0.3s ease-in-out;
-            border-top: 4px solid transparent;
-            border-image: linear-gradient(to right, #2dd4bf, #38bdf8) 1;
+        .task-card, .dashboard-card, .rank-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .task-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07);
+        .task-card:hover, .dashboard-card:hover, .rank-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
         }
         
         /* Custom Checkbox */
         .checklist-item input[type="checkbox"] {
             display: none;
         }
-
         .checklist-item label {
             cursor: pointer;
             display: flex;
             align-items: center;
             transition: color 0.3s ease;
         }
-
         .checklist-item .checkbox-custom {
             width: 20px;
             height: 20px;
@@ -46,7 +43,6 @@
             flex-shrink: 0;
             transition: all 0.3s ease;
         }
-        
         .checklist-item .checkbox-custom::after {
             content: '';
             position: absolute;
@@ -59,278 +55,547 @@
             transform: rotate(45deg) scale(0);
             transition: transform 0.2s ease-in-out;
         }
-
         .checklist-item input:checked + label .checkbox-custom {
-            background-color: #2dd4bf; /* teal-400 */
-            border-color: #2dd4bf;
+            background-color: #6366f1; /* indigo-500 */
+            border-color: #6366f1;
         }
-        
         .checklist-item input:checked + label .checkbox-custom::after {
             transform: rotate(45deg) scale(1);
         }
-
         .checklist-item input:checked + label .checkbox-label-text {
             text-decoration: line-through;
             color: #94a3b8; /* slate-400 */
         }
-
         /* Progress Bar */
         #progress-bar {
             transition: width 0.5s cubic-bezier(0.25, 1, 0.5, 1);
         }
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background-color: #fff;
+            margin: 15% auto;
+            padding: 24px;
+            border-radius: 12px;
+            width: 80%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
 
+        /* Loading Spinner */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(248, 250, 252, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 101;
+        }
+        .loader {
+            border: 6px solid #e2e8f0;
+            border-top: 6px solid #6366f1; /* indigo-500 */
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
-<body class="text-slate-800">
+<body>
 
-    <div id="app" class="max-w-4xl mx-auto p-4 sm:p-6 md:p-8">
-        <header class="mb-6 text-center">
-            <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">Recruiter’s Onboarding Checklist</h1>
-            <p class="mt-2 text-lg text-slate-600">Full Onboarding Program</p>
+    <div id="app" class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl sm:text-5xl font-bold text-slate-900 tracking-tight">Recruiter’s Onboarding Checklist</h1>
+            <p class="mt-3 text-lg text-slate-600">The Complete Onboarding Program</p>
         </header>
 
-        <div class="mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200 sticky top-4 z-10">
-            <label for="candidate-select" class="block text-sm font-medium text-slate-700 mb-2">Select Candidate:</label>
-            <select id="candidate-select" class="w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-teal-400 focus:border-teal-400 transition">
-                <!-- Options will be populated by JavaScript -->
-            </select>
-            
-            <!-- Progress Bar -->
-            <div class="mt-4">
-                 <div class="flex justify-between mb-1">
-                    <span class="text-sm font-medium text-slate-700">Progress</span>
-                    <span id="progress-text" class="text-sm font-medium text-slate-700">0%</span>
-                </div>
-                <div class="w-full bg-slate-200 rounded-full h-2.5">
-                    <div id="progress-bar" class="bg-gradient-to-r from-teal-400 to-sky-500 h-2.5 rounded-full" style="width: 0%"></div>
-                </div>
+        <!-- View Toggler -->
+        <div class="flex justify-center mb-8">
+            <div class="flex p-1 bg-slate-200 rounded-xl">
+                 <button id="view-checklist-btn" class="px-6 py-2 w-32 rounded-lg bg-indigo-600 text-white font-semibold transition-all shadow">Checklist</button>
+                 <button id="view-dashboard-btn" class="px-6 py-2 w-32 rounded-lg bg-transparent text-slate-600 font-semibold transition-all hover:bg-slate-100">Dashboard</button>
             </div>
         </div>
 
-        <main id="checklist-container" class="space-y-6">
-            <!-- Task 1 -->
-            <section class="task-card bg-white p-6 rounded-xl shadow-md border-slate-200">
-                <h2 class="text-xl font-semibold mb-4 flex items-center"><span class="text-2xl mr-3">1️⃣</span> Task 1: Discord Setup</h2>
-                <div class="space-y-4">
-                    <div class="checklist-item"><input type="checkbox" id="task1-1"><label for="task1-1"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Logged into Google Drive with work email.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task1-2"><label for="task1-2"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Created Onboarding_[YourName] folder.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task1-3"><label for="task1-3"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Completed Discord course/guide.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task1-4"><label for="task1-4"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Posted intro in #onboarding-chat (name, role, fun fact).</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task1-5"><label for="task1-5"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Created Discord Notes.doc in Google Drive with: Channel purposes, Mentions/reactions rules, Daily voice channel rules.</span></label></div>
+        <!-- Checklist View -->
+        <div id="checklist-view">
+            <div class="mb-6 bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-md border border-slate-200 sticky top-4 z-10">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                    <div>
+                        <label for="candidate-select" class="block text-sm font-medium text-slate-700 mb-2">Select a Candidate:</label>
+                        <select id="candidate-select" class="w-full p-3 bg-white border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"></select>
+                    </div>
+                    <div class="flex items-end space-x-2">
+                         <div class="flex-grow">
+                             <label for="new-candidate-name" class="block text-sm font-medium text-slate-700 mb-2">Create a New Candidate:</label>
+                             <input type="text" id="new-candidate-name" placeholder="Enter full name" class="w-full p-3 bg-white border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                         </div>
+                         <button id="create-candidate-btn" class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-sm hover:bg-indigo-700 transition-colors flex-shrink-0">Create</button>
+                    </div>
                 </div>
-            </section>
+                
+                <!-- Progress Bar -->
+                <div class="mt-6">
+                    <div class="flex justify-between mb-1">
+                        <span class="text-base font-medium text-slate-800">Onboarding Progress</span>
+                        <span id="progress-text" class="text-base font-medium text-slate-800">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 rounded-full h-3">
+                        <div id="progress-bar" class="bg-gradient-to-r from-indigo-500 to-violet-500 h-3 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
 
-            <!-- Task 2 -->
-             <section class="task-card bg-white p-6 rounded-xl shadow-md border-slate-200">
-                <h2 class="text-xl font-semibold mb-4 flex items-center"><span class="text-2xl mr-3">2️⃣</span> Task 2: NotebookLM</h2>
-                <div class="space-y-4">
-                    <div class="checklist-item"><input type="checkbox" id="task2-1"><label for="task2-1"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Created project Task Notebook LM.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task2-2"><label for="task2-2"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Uploaded Employee Skills Table.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task2-3"><label for="task2-3"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Completed AI tasks 1–5 (employee queries + tools).</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task2-4"><label for="task2-4"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Completed Task 6 (Instagram Plan): 3 posts + 3 stories with formats/tools.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task2-5"><label for="task2-5"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Saved all results in Onboarding_[YourName] folder.</span></label></div>
-                </div>
-            </section>
+            <main id="checklist-container" class="space-y-6">
+                <!-- Checklist sections will be rendered here dynamically -->
+                 <section class="task-card bg-white p-6 rounded-2xl shadow-md border-l-4 border-indigo-500">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center"><span class="text-2xl mr-3">1️⃣</span> Task 1: Discord Setup</h2>
+                    <div class="space-y-4">
+                        <div class="checklist-item"><input type="checkbox" id="task1-1"><label for="task1-1"><span class="checkbox-custom"></span><span class="checkbox-label-text">Logged into Google Drive with work email.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task1-2"><label for="task1-2"><span class="checkbox-custom"></span><span class="checkbox-label-text">Created Onboarding_[YourName] folder.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task1-3"><label for="task1-3"><span class="checkbox-custom"></span><span class="checkbox-label-text">Completed Discord course/guide.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task1-4"><label for="task1-4"><span class="checkbox-custom"></span><span class="checkbox-label-text">Posted intro in #onboarding-chat (name, role, fun fact).</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task1-5"><label for="task1-5"><span class="checkbox-custom"></span><span class="checkbox-label-text">Created Discord Notes.doc in G-Drive with: Channel purposes, Mention/Reaction rules, Daily Voice Channel rules.</span></label></div>
+                    </div>
+                </section>
+                <section class="task-card bg-white p-6 rounded-2xl shadow-md border-l-4 border-indigo-500">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center"><span class="text-2xl mr-3">2️⃣</span> Task 2: NotebookLM</h2>
+                    <div class="space-y-4">
+                        <div class="checklist-item"><input type="checkbox" id="task2-1"><label for="task2-1"><span class="checkbox-custom"></span><span class="checkbox-label-text">Created a NotebookLM project.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task2-2"><label for="task2-2"><span class="checkbox-custom"></span><span class="checkbox-label-text">Uploaded the employee skills sheet.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task2-3"><label for="task2-3"><span class="checkbox-custom"></span><span class="checkbox-label-text">Completed AI tasks 1-5 (employee queries + tools).</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task2-4"><label for="task2-4"><span class="checkbox-custom"></span><span class="checkbox-label-text">Completed task 6 (Instagram Plan): 3 posts + 3 stories with formats/tools.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task2-5"><label for="task2-5"><span class="checkbox-custom"></span><span class="checkbox-label-text">Saved all outputs in the Onboarding_[YourName] folder.</span></label></div>
+                    </div>
+                </section>
+                <section class="task-card bg-white p-6 rounded-2xl shadow-md border-l-4 border-indigo-500">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center"><span class="text-2xl mr-3">3️⃣</span> Task 3: CRM Setup</h2>
+                    <div class="space-y-4">
+                        <div class="checklist-item"><input type="checkbox" id="task3-1"><label for="task3-1"><span class="checkbox-custom"></span><span class="checkbox-label-text">Logged into CRM.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task3-2"><label for="task3-2"><span class="checkbox-custom"></span><span class="checkbox-label-text">Tested "Clock In" feature.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task3-3"><label for="task3-3"><span class="checkbox-custom"></span><span class="checkbox-label-text">Updated profile (work Gmail, Telegram, languages, job/education info, photo, passwords).</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task3-4"><label for="task3-4"><span class="checkbox-custom"></span><span class="checkbox-label-text">Tested "Clock In" → "Break" → "Clock Out".</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task3-5"><label for="task3-5"><span class="checkbox-custom"></span><span class="checkbox-label-text">Wrote daily report in CRM and posted in #reports.</span></label></div>
+                    </div>
+                </section>
+                <section class="task-card bg-white p-6 rounded-2xl shadow-md border-l-4 border-indigo-500">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center"><span class="text-2xl mr-3">4️⃣</span> Task 4: Google Workspace + Gemini</h2>
+                    <div class="space-y-4">
+                        <div class="checklist-item"><input type="checkbox" id="task4-1"><label for="task4-1"><span class="checkbox-custom"></span><span class="checkbox-label-text">Created and shared Drive folder with HR.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task4-2"><label for="task4-2"><span class="checkbox-custom"></span><span class="checkbox-label-text">Gmail is active and used for work only.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task4-3"><label for="task4-3"><span class="checkbox-custom"></span><span class="checkbox-label-text">Created "Discord Logo Sprint" Calendar event + invited victoriarekonvald@gmail.com + saved screenshot.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task4-4"><label for="task4-4"><span class="checkbox-custom"></span><span class="checkbox-label-text">Created Results Sheet with correct columns.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task4-5"><label for="task4-5"><span class="checkbox-custom"></span><span class="checkbox-label-text">Completed Gemini Logo Task: Min. 3 logo options (PNG), saved prompt file, README (with decision notes).</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task4-6"><label for="task4-6"><span class="checkbox-custom"></span><span class="checkbox-label-text">Exported Gemini Canvas document as HTML + screenshot.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task4-7"><label for="task4-7"><span class="checkbox-custom"></span><span class="checkbox-label-text">All files added to Results Sheet.</span></label></div>
+                    </div>
+                </section>
+                <section class="task-card bg-white p-6 rounded-2xl shadow-md border-l-4 border-indigo-500">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center"><span class="text-2xl mr-3">5️⃣</span> Task 5: Notion Theory + Gemini Mascot</h2>
+                    <div class="space-y-4">
+                        <div class="checklist-item"><input type="checkbox" id="task5-1"><label for="task5-1"><span class="checkbox-custom"></span><span class="checkbox-label-text">Generated mascot (3 PNGs).</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task5-2"><label for="task5-2"><span class="checkbox-custom"></span><span class="checkbox-label-text">Saved prompts (Gemini_Prompts_Mascot_[YourName].txt).</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task5-3"><label for="task5-3"><span class="checkbox-custom"></span><span class="checkbox-label-text">Created Instagram content (2 posts + 3 stories) using only AI.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task5-4"><label for="task5-4"><span class="checkbox-custom"></span><span class="checkbox-label-text">Saved prompts (Gemini_Prompts_Instagram_[YourName].txt).</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task5-5"><label for="task5-5"><span class="checkbox-custom"></span><span class="checkbox-label-text">Created Gemini Canvas documentation + exported HTML + screenshot.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task5-6"><label for="task5-6"><span class="checkbox-custom"></span><span class="checkbox-label-text">Uploaded everything to Drive + shared with HR.</span></label></div>
+                    </div>
+                </section>
+                <section class="task-card bg-white p-6 rounded-2xl shadow-md border-l-4 border-indigo-500">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center"><span class="text-2xl mr-3">6️⃣</span> Task 6: AI Training (ChatGPT, Claude, Grok)</h2>
+                    <div class="space-y-4">
+                        <div class="checklist-item"><input type="checkbox" id="task6-1"><label for="task6-1"><span class="checkbox-custom"></span><span class="checkbox-label-text">ChatGPT: Saved outstaffing post.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task6-2"><label for="task6-2"><span class="checkbox-custom"></span><span class="checkbox-label-text">Claude AI: Saved edited post.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task6-3"><label for="task6-3"><span class="checkbox-custom"></span><span class="checkbox-label-text">Grok AI: Saved 3 variations.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task6-4"><label for="task6-4"><span class="checkbox-custom"></span><span class="checkbox-label-text">Created hiring post (roles + CTA).</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task6-5"><label for="task6-5"><span class="checkbox-custom"></span><span class="checkbox-label-text">All 4 docs uploaded to Drive + Dropbox.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task6-6"><label for="task6-6"><span class="checkbox-custom"></span><span class="checkbox-label-text">Links added to Results Sheet.</span></label></div>
+                    </div>
+                </section>
+                 <section class="task-card bg-white p-6 rounded-2xl shadow-md border-l-4 border-indigo-500">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center"><span class="text-2xl mr-3">7️⃣</span> Task 7: Dropbox + VS Code + Cursor + Wispr Flow</h2>
+                    <div class="space-y-4">
+                        <div class="checklist-item"><input type="checkbox" id="task7-1"><label for="task7-1"><span class="checkbox-custom"></span><span class="checkbox-label-text">Completed Dropbox, VS Code, Cursor courses.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task7-2"><label for="task7-2"><span class="checkbox-custom"></span><span class="checkbox-label-text">Created Dropbox folder Onboarding_[YourName]_Files and shared with HR.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task7-3"><label for="task7-3"><span class="checkbox-custom"></span><span class="checkbox-label-text">Installed VS Code, connected to Dropbox folder.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task7-4"><label for="task7-4"><span class="checkbox-custom"></span><span class="checkbox-label-text">Tested Cursor for Markdown editing.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task7-5"><label for="task7-5"><span class="checkbox-custom"></span><span class="checkbox-label-text">Used Wispr Flow to create onboarding report in Markdown.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task7-6"><label for="task7-6"><span class="checkbox-custom"></span><span class="checkbox-label-text">Created file: Onboarding_Day1_[YourName].md.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task7-7"><label for="task7-7"><span class="checkbox-custom"></span><span class="checkbox-label-text">Edited with VS Code (formatted) + Cursor (refined).</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task7-8"><label for="task7-8"><span class="checkbox-custom"></span><span class="checkbox-label-text">File appeared in Dropbox.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task7-9"><label for="task7-9"><span class="checkbox-custom"></span><span class="checkbox-label-text">Shared link in #reports (Discord).</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="task7-10"><label for="task7-10"><span class="checkbox-custom"></span><span class="checkbox-label-text">Added link to Results Sheet.</span></label></div>
+                    </div>
+                </section>
+                <section class="task-card bg-white p-6 rounded-2xl shadow-md border-l-4" style="border-image: linear-gradient(to right, #818cf8, #c084fc) 1;">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center text-slate-800"><span class="text-2xl mr-3">📌</span> Final Recruiter Check</h2>
+                    <div class="space-y-4">
+                        <div class="checklist-item"><input type="checkbox" id="final-1"><label for="final-1"><span class="checkbox-custom"></span><span class="checkbox-label-text">Google Drive folder: Onboarding_[YourName] exists, is organized, and shared.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="final-2"><label for="final-2"><span class="checkbox-custom"></span><span class="checkbox-label-text">Dropbox folder: Onboarding_[YourName]_Files exists and is shared.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="final-3"><label for="final-3"><span class="checkbox-custom"></span><span class="checkbox-label-text">Results Sheet: updated with all tasks + links.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="final-4"><label for="final-4"><span class="checkbox-custom"></span><span class="checkbox-label-text">Discord: candidate is active in onboarding chat + reports channel.</span></label></div>
+                        <div class="checklist-item"><input type="checkbox" id="final-5"><label for="final-5"><span class="checkbox-custom"></span><span class="checkbox-label-text">All outputs from tasks 1-7 have been reviewed and uploaded.</span></label></div>
+                    </div>
+                </section>
+            </main>
+        </div>
 
-            <!-- Task 3 -->
-            <section class="task-card bg-white p-6 rounded-xl shadow-md border-slate-200">
-                <h2 class="text-xl font-semibold mb-4 flex items-center"><span class="text-2xl mr-3">3️⃣</span> Task 3: CRM Setup</h2>
-                <div class="space-y-4">
-                    <div class="checklist-item"><input type="checkbox" id="task3-1"><label for="task3-1"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Logged into CRM.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task3-2"><label for="task3-2"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Clock In tested.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task3-3"><label for="task3-3"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Profile updated (work Gmail, Telegram, languages, job/edu info, photo, passwords).</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task3-4"><label for="task3-4"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Clock In → Break → Clock Out tested.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task3-5"><label for="task3-5"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">End-of-day report written in CRM and posted in #reports.</span></label></div>
+        <!-- Dashboard View -->
+        <div id="dashboard-view" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold text-slate-900 flex items-center">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    Candidate Progress
+                </h2>
+                <div class="flex items-center space-x-3">
+                    <input type="checkbox" id="hide-inactive-toggle" class="h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                    <label for="hide-inactive-toggle" class="text-sm font-medium text-slate-600">Hide inactive candidates</label>
                 </div>
-            </section>
-
-            <!-- Task 4 -->
-            <section class="task-card bg-white p-6 rounded-xl shadow-md border-slate-200">
-                <h2 class="text-xl font-semibold mb-4 flex items-center"><span class="text-2xl mr-3">4️⃣</span> Task 4: Google Workspace + Gemini</h2>
-                <div class="space-y-4">
-                    <div class="checklist-item"><input type="checkbox" id="task4-1"><label for="task4-1"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Drive folder created & shared with HR.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task4-2"><label for="task4-2"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Gmail active and used only for work.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task4-3"><label for="task4-3"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Calendar event “Discord Logo Sprint” created + invited victoriarekonvald@gmail.com + screenshot saved.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task4-4"><label for="task4-4"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Results Sheet created with correct columns.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task4-5"><label for="task4-5"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Gemini logo task completed: At least 3 logo variants (PNGs), Prompts file saved, README (decision notes).</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task4-6"><label for="task4-6"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Gemini Canvas doc exported as HTML + screenshot.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task4-7"><label for="task4-7"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">All files linked in Results Sheet.</span></label></div>
-                </div>
-            </section>
-
-            <!-- Task 5 -->
-            <section class="task-card bg-white p-6 rounded-xl shadow-md border-slate-200">
-                <h2 class="text-xl font-semibold mb-4 flex items-center"><span class="text-2xl mr-3">5️⃣</span> Task 5: Notion Theory + Gemini Mascot</h2>
-                 <div class="space-y-4">
-                    <div class="checklist-item"><input type="checkbox" id="task5-1"><label for="task5-1"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Mascot generated (3 PNGs).</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task5-2"><label for="task5-2"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Prompts saved (Gemini_Prompts_Mascot_[YourName].txt).</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task5-3"><label for="task5-3"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Instagram content (2 posts + 3 stories) created with AI only.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task5-4"><label for="task5-4"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Prompts saved (Gemini_Prompts_Instagram_[YourName].txt).</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task5-5"><label for="task5-5"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Gemini Canvas documentation created + exported HTML + screenshot.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task5-6"><label for="task5-6"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Uploaded everything to Drive + shared with HR.</span></label></div>
-                </div>
-            </section>
-
-             <!-- Task 6 -->
-            <section class="task-card bg-white p-6 rounded-xl shadow-md border-slate-200">
-                <h2 class="text-xl font-semibold mb-4 flex items-center"><span class="text-2xl mr-3">6️⃣</span> Task 6: AI Training (ChatGPT, Claude, Grok)</h2>
-                 <div class="space-y-4">
-                    <div class="checklist-item"><input type="checkbox" id="task6-1"><label for="task6-1"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">ChatGPT: Outstaffing post saved.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task6-2"><label for="task6-2"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Claude AI: Refined post saved.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task6-3"><label for="task6-3"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Grok AI: 3 variations saved.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task6-4"><label for="task6-4"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Recruitment post created (roles + CTA).</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task6-5"><label for="task6-5"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">All 4 docs uploaded to Drive + Dropbox.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task6-6"><label for="task6-6"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Links added in Results Sheet.</span></label></div>
-                </div>
-            </section>
-
-             <!-- Task 7 -->
-            <section class="task-card bg-white p-6 rounded-xl shadow-md border-slate-200">
-                <h2 class="text-xl font-semibold mb-4 flex items-center"><span class="text-2xl mr-3">7️⃣</span> Task 7: Dropbox + VS Code + Cursor + Wispr Flow</h2>
-                 <div class="space-y-4">
-                    <div class="checklist-item"><input type="checkbox" id="task7-1"><label for="task7-1"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Completed Dropbox, VS Code, Cursor courses.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task7-2"><label for="task7-2"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Dropbox folder Onboarding_[YourName]_Files created & shared with HR.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task7-3"><label for="task7-3"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">VS Code installed, linked to Dropbox folder.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task7-4"><label for="task7-4"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Cursor tested for Markdown editing.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task7-5"><label for="task7-5"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Wispr Flow used to generate onboarding summary in Markdown.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task7-6"><label for="task7-6"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">File created: Onboarding_Day1_[YourName].md.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task7-7"><label for="task7-7"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Edited with VS Code (formatted) + Cursor (refined).</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task7-8"><label for="task7-8"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">File appears in Dropbox.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task7-9"><label for="task7-9"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Link shared in #reports (Discord).</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="task7-10"><label for="task7-10"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Link added in Results Sheet.</span></label></div>
-                </div>
-            </section>
+            </div>
             
-            <!-- Final Verification -->
-            <section class="task-card bg-white p-6 rounded-xl shadow-md border-slate-200" style="border-image: linear-gradient(to right, #a78bfa, #f472b6) 1;">
-                <h2 class="text-xl font-semibold mb-4 flex items-center text-slate-800"><span class="text-2xl mr-3">📌</span> Final Recruiter Verification</h2>
-                <div class="space-y-4">
-                    <div class="checklist-item"><input type="checkbox" id="final-1"><label for="final-1"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Google Drive folder: Onboarding_[YourName] exists, organized, shared.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="final-2"><label for="final-2"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Dropbox folder: Onboarding_[YourName]_Files exists, shared.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="final-3"><label for="final-3"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Results Sheet: updated with all tasks + links.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="final-4"><label for="final-4"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">Discord: candidate active in onboarding chat + reports channel.</span></label></div>
-                    <div class="checklist-item"><input type="checkbox" id="final-5"><label for="final-5"><span class="checkbox-custom"></span><span class="checkbox-label-text text-slate-700">All deliverables from Tasks 1–7 checked and uploaded.</span></label></div>
-                </div>
-            </section>
+            <h3 class="text-2xl font-semibold text-slate-800 mb-4 flex items-center">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                Top 3 Performers
+            </h3>
+            <div id="top-candidates-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+                <!-- Top 3 candidates will be populated here -->
+            </div>
 
-        </main>
+            <h3 class="text-2xl font-semibold text-slate-800 mb-4 flex items-center">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                All Candidates
+            </h3>
+            <div id="all-candidates-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- All other candidates will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for notifications -->
+    <div id="modal" class="modal items-center justify-center">
+        <div class="modal-content">
+            <p id="modal-text" class="text-lg font-medium text-slate-700"></p>
+            <button id="modal-close-btn" class="mt-6 px-8 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors">OK</button>
+        </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loader"></div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // --- Configuration ---
-            const candidates = [
-                "Kabanets Serafyma",
-                "Sofiia Lukianchuk",
-                "Polina Bohun",
-                "Safonova Kateryna",
-                "Poberezhets Yana"
-            ];
-            const localStorageKeyPrefix = 'recruiterChecklist_';
+        // PASTE YOUR GOOGLE APPS SCRIPT URL HERE
+        const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbztwNNrEgIKU-4Vv20_rMKuAwoP_j31ppduk7EZhtQfbVuh7CRQ5dJxM7Qcv4C7NCsM7Q/exec';
 
-            // --- DOM Elements ---
-            const candidateSelect = document.getElementById('candidate-select');
-            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-            const progressBar = document.getElementById('progress-bar');
-            const progressText = document.getElementById('progress-text');
-            
-            // --- Functions ---
-            function updateProgress() {
-                const totalTasks = checkboxes.length;
-                const completedTasks = document.querySelectorAll('input[type="checkbox"]:checked').length;
-                const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-                
-                progressBar.style.width = percentage + '%';
-                progressText.textContent = percentage + '%';
+        const candidateSelect = document.getElementById('candidate-select');
+        const checklistContainer = document.getElementById('checklist-container');
+        const checkboxes = checklistContainer.querySelectorAll('input[type="checkbox"]');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const newCandidateInput = document.getElementById('new-candidate-name');
+        const createCandidateBtn = document.getElementById('create-candidate-btn');
+        const viewChecklistBtn = document.getElementById('view-checklist-btn');
+        const viewDashboardBtn = document.getElementById('view-dashboard-btn');
+        const checklistView = document.getElementById('checklist-view');
+        const dashboardView = document.getElementById('dashboard-view');
+        
+        const hideInactiveToggle = document.getElementById('hide-inactive-toggle');
+        const topCandidatesContainer = document.getElementById('top-candidates-container');
+        const allCandidatesContainer = document.getElementById('all-candidates-container');
+        const modal = document.getElementById('modal');
+        const modalText = document.getElementById('modal-text');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        let allCandidatesData = {};
+
+        function showModal(message) {
+            modalText.textContent = message;
+            modal.style.display = 'flex';
+        }
+
+        modalCloseBtn.onclick = () => {
+            modal.style.display = 'none';
+        };
+
+        window.onclick = (event) => {
+            if (event.target == modal) {
+                modal.style.display = 'none';
             }
+        };
 
-            function populateCandidates() {
-                candidates.forEach(name => {
+        function showLoading() {
+            loadingOverlay.style.display = 'flex';
+        }
+
+        function hideLoading() {
+            loadingOverlay.style.display = 'none';
+        }
+
+        function updateProgress() {
+            const totalTasks = checkboxes.length;
+            const completedTasks = document.querySelectorAll('#checklist-container input[type="checkbox"]:checked').length;
+            const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+            
+            progressBar.style.width = percentage + '%';
+            progressText.textContent = percentage + '%';
+        }
+
+        function populateCandidates() {
+            const currentSelection = candidateSelect.value;
+            candidateSelect.innerHTML = '';
+            const candidateNames = Object.keys(allCandidatesData);
+            if (candidateNames.length === 0) {
+                candidateSelect.disabled = true;
+                const option = document.createElement('option');
+                option.textContent = 'No candidates found';
+                candidateSelect.appendChild(option);
+            } else {
+                candidateSelect.disabled = false;
+                candidateNames.sort().forEach(name => {
                     const option = document.createElement('option');
                     option.value = name;
                     option.textContent = name;
                     candidateSelect.appendChild(option);
                 });
+                if (currentSelection && candidateNames.includes(currentSelection)) {
+                    candidateSelect.value = currentSelection;
+                }
             }
+        }
 
-            function resetCheckboxes() {
-                checkboxes.forEach(checkbox => checkbox.checked = false);
-            }
+        function resetCheckboxes() {
+            checkboxes.forEach(checkbox => checkbox.checked = false);
+        }
 
-            function loadChecklistState(candidateName) {
-                if (!candidateName) return;
-                
+        function renderChecklist(candidateName) {
+            if (!candidateName || !allCandidatesData[candidateName]) {
                 resetCheckboxes();
-
-                try {
-                    const storageKey = localStorageKeyPrefix + candidateName;
-                    const savedStateJSON = localStorage.getItem(storageKey);
-
-                    if (savedStateJSON) {
-                        const data = JSON.parse(savedStateJSON);
-                        checkboxes.forEach(checkbox => {
-                            if (data[checkbox.id]) {
-                                checkbox.checked = true;
-                            }
-                        });
-                    } else {
-                        console.log(`No checklist data found for ${candidateName}. Starting fresh.`);
-                    }
-                } catch (error) {
-                    console.error("Error loading checklist state from localStorage: ", error);
-                }
-                updateProgress(); // Update progress bar on load
+                updateProgress();
+                return;
             }
-
-            function saveChecklistState(candidateName) {
-                if (!candidateName) return;
-                
-                const state = {};
-                checkboxes.forEach(checkbox => {
-                    state[checkbox.id] = checkbox.checked;
-                });
-                
-                try {
-                    const storageKey = localStorageKeyPrefix + candidateName;
-                    localStorage.setItem(storageKey, JSON.stringify(state));
-                    console.log(`State saved for ${candidateName}`);
-                } catch (error) {
-                    console.error("Error saving checklist state to localStorage: ", error);
-                }
-            }
-            
-            // --- Event Listeners and Initialization ---
-
-            function debounce(func, delay) {
-                let timeout;
-                return function(...args) {
-                    clearTimeout(timeout);
-                    timeout = setTimeout(() => func.apply(this, args), delay);
-                };
-            }
-            const debouncedSave = debounce(saveChecklistState, 300);
-
+            const candidateData = allCandidatesData[candidateName];
             checkboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', () => {
-                    const selectedCandidate = candidateSelect.value;
-                    debouncedSave(selectedCandidate);
-                    updateProgress(); // Update progress bar on change
-                });
+                checkbox.checked = candidateData[checkbox.id] || false;
+            });
+            updateProgress();
+        }
+        
+        function renderDashboard() {
+            topCandidatesContainer.innerHTML = '';
+            allCandidatesContainer.innerHTML = '';
+            const allTasks = checkboxes.length;
+            const hideInactive = hideInactiveToggle.checked;
+
+            const candidatesWithProgress = Object.keys(allCandidatesData).map(name => {
+                const candidateData = allCandidatesData[name];
+                const completedTasks = Object.values(candidateData).filter(isCompleted => isCompleted === true).length;
+                const percentage = allTasks > 0 ? Math.round((completedTasks / allTasks) * 100) : 0;
+                return { name, completedTasks, percentage };
             });
 
-            candidateSelect.addEventListener('change', (e) => {
-                loadChecklistState(e.target.value);
+            candidatesWithProgress.sort((a, b) => b.percentage - a.percentage || a.name.localeCompare(b.name));
+
+            const filteredCandidates = hideInactive 
+                ? candidatesWithProgress.filter(c => c.percentage > 0)
+                : candidatesWithProgress;
+            
+            if (filteredCandidates.length === 0) {
+                allCandidatesContainer.innerHTML = `<p class="text-center text-slate-500 col-span-full">No candidate data available. Please create a new candidate.</p>`;
+                return;
+            }
+            
+            const topCandidates = filteredCandidates.slice(0, 3);
+            const otherCandidates = filteredCandidates.slice(3);
+
+            const rankStyles = [
+                { icon: '🥇', theme: 'amber', place: '1st Place' },
+                { icon: '🥈', theme: 'slate', place: '2nd Place' },
+                { icon: '🥉', theme: 'orange', place: '3rd Place' }
+            ];
+
+            topCandidates.forEach((candidate, index) => {
+                const style = rankStyles[index];
+                const cardHtml = `
+                    <div class="rank-card bg-${style.theme}-50 p-6 rounded-2xl shadow-md border-2 border-${style.theme}-400 text-center">
+                        <div class="text-5xl mb-2">${style.icon}</div>
+                        <h3 class="text-2xl font-bold text-${style.theme}-800">${style.place}</h3>
+                        <p class="text-lg font-medium text-slate-800 mt-1">${candidate.name}</p>
+                        <div class="mt-4 text-left">
+                             <div class="flex justify-between items-center mb-1">
+                                <span class="text-sm text-slate-700">Completed: ${candidate.completedTasks} / ${allTasks}</span>
+                                <span class="text-sm font-medium text-slate-700">${candidate.percentage}%</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-2.5">
+                                <div class="bg-gradient-to-r from-indigo-500 to-violet-500 h-2.5 rounded-full" style="width: ${candidate.percentage}%"></div>
+                            </div>
+                        </div>
+                    </div>`;
+                topCandidatesContainer.innerHTML += cardHtml;
             });
             
-            function initializeAppLogic() {
+            otherCandidates.forEach(candidate => {
+                const cardHtml = `
+                    <div class="dashboard-card bg-white p-6 rounded-2xl shadow-md border-l-4 border-slate-200">
+                        <h3 class="text-xl font-semibold mb-2">${candidate.name}</h3>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm text-slate-700">Completed: ${candidate.completedTasks} / ${allTasks}</span>
+                            <span class="text-sm font-medium text-slate-700">${candidate.percentage}%</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-2.5">
+                            <div class="bg-gradient-to-r from-indigo-500 to-violet-500 h-2.5 rounded-full" style="width: ${candidate.percentage}%"></div>
+                        </div>
+                    </div>`;
+                allCandidatesContainer.innerHTML += cardHtml;
+            });
+        }
+
+        async function fetchDataAndRender() {
+            showLoading();
+            try {
+                const response = await fetch(`${GOOGLE_SHEETS_API_URL}?action=read`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+                allCandidatesData = data;
+                
                 populateCandidates();
-                const initialCandidate = candidateSelect.value;
-                loadChecklistState(initialCandidate);
+                const selectedCandidate = candidateSelect.value;
+                renderChecklist(selectedCandidate);
+                renderDashboard();
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                showModal("Error loading data. Check the API connection and console for details.");
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function createNewCandidate() {
+            const newName = newCandidateInput.value.trim();
+            if (!newName) {
+                showModal("Please enter a candidate name.");
+                return;
+            }
+            if (Object.keys(allCandidatesData).map(k => k.toLowerCase()).includes(newName.toLowerCase())) {
+                showModal(`Candidate "${newName}" already exists.`);
+                return;
             }
 
-            initializeAppLogic();
+            showLoading();
+            try {
+                const response = await fetch(`${GOOGLE_SHEETS_API_URL}?action=create&candidateName=${encodeURIComponent(newName)}`);
+                const result = await response.text();
+                if (result.trim() === 'Success') {
+                    newCandidateInput.value = '';
+                    await fetchDataAndRender();
+                    candidateSelect.value = newName;
+                    renderChecklist(newName);
+                    showModal(`Candidate "${newName}" created successfully!`);
+                } else {
+                    throw new Error(result);
+                }
+            } catch (error) {
+                console.error("Error creating candidate:", error);
+                showModal("Error creating candidate. Please try again.");
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function saveProgress(candidateName, taskId, isChecked) {
+            showLoading();
+            try {
+                const url = `${GOOGLE_SHEETS_API_URL}?action=update&candidateName=${encodeURIComponent(candidateName)}&taskId=${encodeURIComponent(taskId)}&status=${isChecked}`;
+                const response = await fetch(url);
+                const result = await response.text();
+                if (result.trim() === 'Success') {
+                    if (!allCandidatesData[candidateName]) allCandidatesData[candidateName] = {};
+                    allCandidatesData[candidateName][taskId] = isChecked;
+                    renderDashboard();
+                } else {
+                    throw new Error(result);
+                }
+            } catch (error) {
+                console.error("Error saving progress:", error);
+                showModal("Error saving progress. Please try again.");
+                // Revert checkbox state on failure
+                const checkbox = document.getElementById(taskId);
+                if(checkbox) checkbox.checked = !isChecked;
+                updateProgress();
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Event Listeners
+        candidateSelect.addEventListener('change', (event) => {
+            renderChecklist(event.target.value);
         });
+
+        createCandidateBtn.addEventListener('click', createNewCandidate);
+        newCandidateInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') createNewCandidate();
+        });
+
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (event) => {
+                const selectedCandidate = candidateSelect.value;
+                if (!selectedCandidate || candidateSelect.disabled) {
+                    showModal("Please select or create a candidate first.");
+                    event.target.checked = !event.target.checked;
+                    return;
+                }
+                updateProgress();
+                saveProgress(selectedCandidate, event.target.id, event.target.checked);
+            });
+        });
+
+        viewChecklistBtn.addEventListener('click', () => {
+            checklistView.classList.remove('hidden');
+            dashboardView.classList.add('hidden');
+            viewChecklistBtn.classList.add('bg-indigo-600', 'text-white', 'shadow');
+            viewChecklistBtn.classList.remove('bg-transparent', 'text-slate-600');
+            viewDashboardBtn.classList.remove('bg-indigo-600', 'text-white', 'shadow');
+            viewDashboardBtn.classList.add('bg-transparent', 'text-slate-600');
+        });
+
+        viewDashboardBtn.addEventListener('click', () => {
+            checklistView.classList.add('hidden');
+            dashboardView.classList.remove('hidden');
+            viewDashboardBtn.classList.add('bg-indigo-600', 'text-white', 'shadow');
+            viewDashboardBtn.classList.remove('bg-transparent', 'text-slate-600');
+            viewChecklistBtn.classList.remove('bg-indigo-600', 'text-white', 'shadow');
+            viewChecklistBtn.classList.add('bg-transparent', 'text-slate-600');
+            renderDashboard();
+        });
+        
+        hideInactiveToggle.addEventListener('change', renderDashboard);
+
+        // Initial data fetch
+        document.addEventListener('DOMContentLoaded', fetchDataAndRender);
+
     </script>
 </body>
 </html>
-
